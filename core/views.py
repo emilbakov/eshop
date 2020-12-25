@@ -46,6 +46,7 @@ class OrderSummeryView(LoginRequiredMixin,View):
 class ItemDetailView(DetailView):
     model = Item
     template_name='product-page.html'
+    
 
 @login_required
 def add_to_cart(request, slug):
