@@ -1,3 +1,5 @@
+from django import forms
+from django.http import request
 from django.shortcuts import render, get_object_or_404
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
@@ -7,6 +9,7 @@ from django.views.generic import ListView,DetailView,View
 from django.shortcuts import redirect
 from django.utils import timezone
 from .models import Item, OrderItem, Order
+from .forms import CheckoutForm
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 
@@ -14,8 +17,28 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 
 
 
-def checkout(request):
-    return render(request, "checkout-page.html")
+class CheckoutView(View):
+
+    def get(self, *args, **kwargs):
+        form= CheckoutForm()
+        context ={
+            'form': form
+        }
+
+        return render(self.request, "checkout-page.html", context)
+
+    def post(self, *args, **kwargs):
+        form= CheckoutForm(self.request.POST or None)
+        print(self.request.POST)
+        if form.is_valid():
+            print(form.cleaned_data)
+            print("The form is valid")
+            return redirect ('core:checkout')
+        messages.warning(self.request, "Failed checkout")
+        return redirect('core:checkout')    
+
+
+    
 
 
 
