@@ -28,8 +28,11 @@ class CheckoutView(View):
 
     def get(self, *args, **kwargs):
         form= CheckoutForm()
+        order = Order.objects.get(user=self.request.user, ordered=False)       
+       
         context ={
-            'form': form
+            'form': form,
+            'order': order
         }
 
         return render(self.request, "checkout-page.html", context)
@@ -73,7 +76,11 @@ class CheckoutView(View):
 
 class PaymentView(View):
     def get(self,*args,**kwargs):
-        return render(self.request, "payment.html")
+        order = Order.objects.get(user=self.request.user, ordered=False)
+        context = {
+            'order': order
+        }
+        return render(self.request, "payment.html",context)
 
     def post(self,*args,**kwargs):
         order = Order.objects.get(user=self.request.user, ordered=False)
