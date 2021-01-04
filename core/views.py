@@ -10,8 +10,8 @@ from django.contrib.auth.decorators import login_required
 from django.views.generic import ListView,DetailView,View
 from django.shortcuts import redirect
 from django.utils import timezone
-from .models import BillingAddress, Item, OrderItem, Order ,Payment
-from .forms import CheckoutForm
+from .models import BillingAddress, Item, OrderItem, Order ,Payment , Coupon
+from .forms import CheckoutForm, CouponForm
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 
@@ -27,15 +27,19 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 class CheckoutView(View):
 
     def get(self, *args, **kwargs):
-        form= CheckoutForm()
-        order = Order.objects.get(user=self.request.user, ordered=False)       
-       
-        context ={
-            'form': form,
-            'order': order
-        }
-
-        return render(self.request, "checkout-page.html", context)
+        try:
+            form= CheckoutForm()
+            order = Order.objects.get(user=self.request.user, ordered=False)
+            context ={
+                'form': form,
+                'couponform': CouponForm(),
+                'order': order
+            }
+            return render(self.request, "checkout-page.html", context)
+        except ObjectDoesNotExist:
+            messages.info(self.request, "You do not have an active order")
+            return redirect("core:checkout")
+    
 
     def post(self, *args, **kwargs):
         form = CheckoutForm(self.request.POST or None)
@@ -76,6 +80,12 @@ class CheckoutView(View):
 
 class PaymentView(View):
     def get(self,*args,**kwargs):
+        try:
+            order = Order.objects.get(user=self.request.user,ordered=False)
+            
+        except ObjectDoesNotExist:
+            messages.info(request, "You do not have an active order")
+            return redirect("core:checkout")
         order = Order.objects.get(user=self.request.user, ordered=False)
         context = {
             'order': order
@@ -104,6 +114,10 @@ class PaymentView(View):
             payment.save()
 
             #assign the payment
+            order_items = order.items.all()
+            order_items.update(ordered=True)
+            for item in order_items:
+                item.save()
 
             order.ordered = True
             order.payment = payment
@@ -144,17 +158,7 @@ class PaymentView(View):
         except Exception as e:
             # Something else happened, completely unrelated to Stripe
             messages.error(self.request, "A serious error occured")
-            return redirect("/")
-
-        
-
-
-
-
-
-
-
-
+            return redirect("/")     
 
 
 class HomeView(ListView):
@@ -272,3 +276,29 @@ def remove_single_item_from_cart(request, slug):
     else:
         messages.info(request, "You do not have an active order")
         return redirect("core:product", slug=slug)
+
+def get_coupon(request,code):    
+    try:
+        coupon = Coupon.objects.get(code=code)
+        return coupon 
+
+    except ObjectDoesNotExist:
+        messages.info(request, "This coupon does not exist")
+        return redirect("core:checkout")
+
+def add_coupon(request):
+    if request.method == 'POST':
+        form= CouponForm(request.POST or None)
+        if form.is_valid():
+            try:
+                code = form.cleaned_data.get('code')
+                order = Order.objects.get(user=request.user,ordered=False)
+                order.coupon = get_coupon(request, code)
+                order.save()
+                messages.success(request, "Successfully added coupon")
+                return redirect("core:checkout")  
+
+            except ObjectDoesNotExist:
+                messages.info(request, "You do not have an active order")
+                return redirect("core:checkout")
+    return None            
