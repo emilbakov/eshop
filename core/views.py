@@ -10,17 +10,22 @@ from django.contrib.auth.decorators import login_required
 from django.views.generic import ListView,DetailView,View
 from django.shortcuts import redirect
 from django.utils import timezone
-from .models import BillingAddress, Item, OrderItem, Order ,Payment , Coupon
-from .forms import CheckoutForm, CouponForm
+from .models import BillingAddress, Item, OrderItem, Order ,Payment , Coupon, Refund
+from .forms import CheckoutForm, CouponForm, RefundForm
 
 from django.contrib.auth.mixins import LoginRequiredMixin
+import random
+import string
 
 import stripe
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
-# Create your views here.
+def create_ref_code():
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=20))
+
+
 
 
 
@@ -80,23 +85,19 @@ class CheckoutView(View):
 
 
 class PaymentView(View):
-    def get(self,*args,**kwargs):
-        try:
-            order = Order.objects.get(user=self.request.user,ordered=False)
-            if order.billing_address:
-                context = {
+    def get(self, *args, **kwargs):        
+        order = Order.objects.get(user=self.request.user, ordered=False)
+        if order.billing_address:
+            context = {
                 'order': order,
-                'DISPLAY_COUPON_FORM':False
-                }
-                return render(self.request, "payment.html",context)
-            else:
-                messages.warning(self.request,"You have not added a billing address")
-                return redirect("core:checkout")
-
-            
-        except ObjectDoesNotExist:
-            messages.info(request, "You do not have an active order")
+                'DISPLAY_COUPON_FORM': False
+            }
+            return render(self.request, "payment.html", context)
+        else:
+            messages.warning(
+                self.request, "You have not added a billing address")
             return redirect("core:checkout")
+
         
         
 
@@ -129,6 +130,7 @@ class PaymentView(View):
 
             order.ordered = True
             order.payment = payment
+            order.ref_code = create_ref_code()
             order.save()
 
             messages.success(self.request , "Your order was success")
@@ -296,7 +298,7 @@ def get_coupon(request,code):
 
 class AddCouponView(View):
     def post(self, *args,**kwargs):            
-        form= CouponForm(self.request.POST or None)
+        form= CouponForm(self.request.POST or None) 
         if form.is_valid():
             try:
                 code = form.cleaned_data.get('code')
@@ -304,9 +306,46 @@ class AddCouponView(View):
                 order.coupon = get_coupon(self.request, code)
                 order.save()
                 messages.success(self.request, "Successfully added coupon")
-                return redirect("core:checkout")  
+                return redirect("core:checkout")
+            except ObjectDoesNotExist:
+                messages.warning(self.request, "No such coupon")
+                return redirect("core:checkout")
+ 
+
+class RequestRefundView(View):
+    def get(self,*args,**kwargs):
+        form=RefundForm()
+        context = {
+            'form':form
+        }
+        return render (self.request, "request_refund.html", context)
+
+
+    def post(self,*args,**kwargs):
+        form = RefundForm(self.request.POST)
+        if form.is_valid():
+            ref_code = form.cleaned_data.get('ref_code')               
+            message = form.cleaned_data.get('message')
+            email = form.cleaned_data.get('email')
+
+            try:
+                order=Order.objects.get(ref_code=ref_code)
+                order.refund_requested = True
+                order.save()
+
+                refund = Refund()
+                refund.order = order
+                refund.reason = message
+                refund.email = email
+                refund.save()
+
+                messages.info(self.request, "Your request was received.")
+                return redirect("core:request-refund")
 
             except ObjectDoesNotExist:
-                messages.info(self.request, "You do not have an active order")
-                return redirect("core:checkout")
-               
+                messages.info(self.request, "THIS ORDER DOES NOT EXIST")
+                return redirect("core:request-refund")
+
+
+
+
