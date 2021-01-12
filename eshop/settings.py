@@ -14,8 +14,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django_countries',
-    
+    'django_countries',    
 
     #auth
     'django.contrib.sites',
@@ -23,10 +22,13 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
+    #social provider
+    'allauth.socialaccount.providers.facebook',
+    'allauth.socialaccount.providers.google',
+
+
 
     'crispy_forms',
-
-
     'core',
 
 ]
@@ -101,8 +103,10 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
     
 ]
+ACCOUNT_EMAIL_VERIFICATION = "none"
 
-SITE_ID = 1
+
+SITE_ID = 2
 LOGIN_REDIRECT_URL = '/'
 
 # Crispy form
@@ -112,3 +116,6 @@ CRISPY_TEMPLATE_FORM = 'bootstrap4'
 #Stripe
 STRIPE_PUBLISHABLE_KEY = 'pk_test_51I5VevGo48B9emplbNRoGnSL22M5ljxTwMnLZFs44yq2CcPWBDXh4qV3kLS6u23oW7Opt2AZGfayP1mPf88eRoTc00ieRkKnt2'
 STRIPE_SECRET_KEY = 'sk_test_51I5VevGo48B9empliwhqzDzjX8ZTDTXyo6QYoX9PFse7U7gayXVFFEgNSPc1uBDXFAtPPCYTeFYQXF1mYaoq84od00ykwsc74M'
+
+
+#Social providers
