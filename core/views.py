@@ -94,8 +94,7 @@ class PaymentView(View):
             }
             return render(self.request, "payment.html", context)
         else:
-            messages.warning(
-                self.request, "You have not added a billing address")
+            messages.warning(self.request, "You have not added a billing address")
             return redirect("core:checkout")
 
         

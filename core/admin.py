@@ -12,7 +12,7 @@ class OrderAdmin(admin.ModelAdmin):
     list_filter = ['ordered','being_delivered','received','refund_requested','refund_granted']
     list_display_links =['user','billing_address','payment','coupon']
     search_fields = ['user__username','ref_code']
-    actions = [make_refund_accepted]
+actions = [make_refund_accepted]
 
 
 admin.site.register(Item)
