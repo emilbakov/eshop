@@ -199,7 +199,7 @@ class ItemDetailView(DetailView):
 
 
 @login_required
-def add_to_cart(request, slug):
+def add_to_cart(request, slug):    
     item = get_object_or_404(Item, slug=slug)
     order_item,created = OrderItem.objects.get_or_create(
         item=item,
